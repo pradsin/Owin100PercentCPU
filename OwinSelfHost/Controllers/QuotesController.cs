@@ -7,7 +7,7 @@ namespace OwinSelfHost.Controllers
     {
         #region Static Fields and Constants
 
-        public static string[] _quotes =
+        private static readonly List<string> Quotes = new List<string>
         {
             "Reading is to the mind what exercise is to the body. - Joseph Addison",
             "Glory is fleeting, but obscurity is forever. - Napoleon Bonaparte",
@@ -34,15 +34,9 @@ namespace OwinSelfHost.Controllers
 
         #region Public Methods
 
-        //public async Task<IEnumerable<string>> Get()
-        //{
-        //    Task<string[]> result = Task.Run(() => _quotes);
-        //    return await result;
-        //}
-
-        public IEnumerable<string> Get()
+        public async Task<List<string>> Get()
         {
-            return _quotes;
+            return await Task.FromResult(Quotes);
         }
 
         #endregion

@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System;
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -12,7 +13,6 @@ namespace OwinSelfHost.Middlewares
         #region  Private Fields
 
         private readonly Regex _authParamRegex;
-        private readonly Regex _wavFileRegex;
 
         #endregion
 
@@ -21,12 +21,7 @@ namespace OwinSelfHost.Middlewares
         public RestAuthenticationHandler()
         {
             _authParamRegex = new Regex(@"SessionID\s*=\s*(?<sessionid>[^,\s]+?)\s*,\s*UserToken\s*=\s*(?<usertoken>[^,\s]+)", RegexOptions.Singleline);
-            _wavFileRegex = new Regex(@"^.*\/campaigns\/.+\/tones\/.+\.wav$", RegexOptions.Singleline);
         }
-
-        #endregion
-
-        #region Private Methods
 
         #endregion
 
@@ -34,28 +29,28 @@ namespace OwinSelfHost.Middlewares
 
         public override async Task<bool> InvokeAsync()
         {
-            return await Task.Run(() =>
+            bool fail = true;
+
+            try
             {
+                string[] authVal;
 
-                try
+                if (Request.Headers.TryGetValue("Authorization", out authVal))
                 {
-                    string[] authVal;
-
-                    if (Request.Headers.TryGetValue("Authorization", out authVal))
+                    foreach (string s in authVal)
                     {
-                        foreach (string a in authVal)
+                        AuthenticationHeaderValue authHeader = AuthenticationHeaderValue.Parse(s);
+                        if (authHeader.Scheme != "Custom")
                         {
-                            AuthenticationHeaderValue authHeader = AuthenticationHeaderValue.Parse(a);
-                            if (authHeader.Scheme != "Custom")
-                            {
-                                continue;
-                            }
+                            continue;
+                        }
 
-                            if (string.IsNullOrEmpty(authHeader.Parameter))
-                            {
-                                return true;
-                            }
-
+                        if (string.IsNullOrEmpty(authHeader.Parameter))
+                        {
+                            fail = true;
+                        }
+                        else
+                        {
                             Match match = _authParamRegex.Match(authHeader.Parameter);
 
                             if (!match.Success)
@@ -65,20 +60,18 @@ namespace OwinSelfHost.Middlewares
 
                             if ((match.Groups["sessionid"].Value == "DFA05EB6-9A05-42B6-83F7-FFD8B7C442CD") && (match.Groups["usertoken"].Value == "3706AED7"))
                             {
-                                return false;
+                                fail = false;
                             }
-
-                            return true;
                         }
                     }
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex);
+            }
 
-                    return true;
-                }
-                catch
-                {
-                    return true;
-                }
-            });
+            return await Task.FromResult(fail);
         }
 
         #endregion
